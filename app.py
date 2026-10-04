@@ -5,7 +5,7 @@ from src.retrieval import RetrievalSystem
 from src.graph import build_graph
 from src.utils import setup_environment, format_trace_for_ui
 
-st.set_page_config(page_title="ScholarMind", page_icon="🧠", layout="wide")
+st.set_page_config(page_title="AxiomMind", page_icon="🧠", layout="wide")
 
 try:
     setup_environment()
@@ -13,7 +13,7 @@ except ValueError as e:
     st.error(str(e))
     st.stop()
 
-st.title("🧠 ScholarMind — Multi-Agent Academic Research Assistant")
+st.title("🧠 AxiomMind — Multi-Agent Academic Research Assistant")
 st.markdown("A LangGraph-orchestrated system that plans, retrieves, critiques, writes, and evaluates research reports.")
 
 # Initialize session state
