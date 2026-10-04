@@ -4,7 +4,7 @@ from src.state import SubQuestions
 import os
 
 def build_planner():
-    llm = ChatGroq(temperature=0, model_name="llama-3.3-70b-versatile")
+    llm = ChatGroq(temperature=0, model_name="qwen/qwen3.8-27b")
     structured_llm = llm.with_structured_output(SubQuestions)
     
     prompt = ChatPromptTemplate.from_messages([

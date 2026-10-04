@@ -5,7 +5,7 @@ from src.state import CriticFeedback, ResearchState
 from src.retrieval import RetrievalSystem
 
 def build_critic():
-    llm = ChatGroq(temperature=0, model_name="llama-3.3-70b-versatile")
+    llm = ChatGroq(temperature=0, model_name="qwen/qwen3.8-27b", max_tokens=150, max_retries=2)
     structured_llm = llm.with_structured_output(CriticFeedback)
     
     prompt = ChatPromptTemplate.from_messages([
