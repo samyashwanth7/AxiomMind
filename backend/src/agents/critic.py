@@ -1,11 +1,11 @@
 import concurrent.futures
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from src.state import CriticFeedback, ResearchState
 from src.retrieval import RetrievalSystem
 
 def build_critic():
-    llm = ChatGroq(temperature=0, model_name="qwen/qwen3.8-27b", max_tokens=150, max_retries=2)
+    llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-3.5-flash-lite", max_retries=2)
     structured_llm = llm.with_structured_output(CriticFeedback)
     
     prompt = ChatPromptTemplate.from_messages([

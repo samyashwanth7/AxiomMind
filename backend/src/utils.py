@@ -5,8 +5,11 @@ def setup_environment():
     from dotenv import load_dotenv
     load_dotenv()
     
-    if not os.environ.get("GROQ_API_KEY"):
-        raise ValueError("GROQ_API_KEY environment variable is not set. Please add it to your .env file.")
+    api_key = os.environ.get("GEMINI_API_KEY") or os.environ.get("GOOGLE_API_KEY") or os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        raise ValueError("Neither GEMINI_API_KEY nor GROQ_API_KEY is set. Please add it to your .env file.")
+    if os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
+        os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
         
 def format_trace_for_ui(traces):
     """Formats the LangGraph agent traces for the Streamlit UI."""

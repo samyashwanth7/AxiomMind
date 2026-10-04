@@ -1,11 +1,11 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.output_parsers import StrOutputParser
 from src.state import ResearchState
 from src.retrieval import RetrievalSystem
 
 def build_compressor():
-    llm = ChatGroq(temperature=0, model_name="openai/gpt-oss-120b", max_tokens=350)
+    llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-3.5-flash-lite")
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an expert context compressor. Your job is to extract ONLY the sentences and facts relevant to the sub-question from the provided evidence. 
@@ -17,7 +17,7 @@ def build_compressor():
     return prompt | llm | StrOutputParser()
 
 def build_writer():
-    llm = ChatGroq(temperature=0.2, model_name="openai/gpt-oss-120b")
+    llm = ChatGoogleGenerativeAI(temperature=0.2, model="gemini-3.5-flash-lite")
     
     prompt = ChatPromptTemplate.from_messages([
         ("system", """You are an expert academic writer. Your task is to write a comprehensive, well-structured research report based ONLY on the provided extracted evidence. 

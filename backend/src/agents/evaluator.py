@@ -1,10 +1,10 @@
 from langchain_core.prompts import ChatPromptTemplate
-from langchain_groq import ChatGroq
+from langchain_google_genai import ChatGoogleGenerativeAI
 from src.state import EvaluatorScorecard, ResearchState
 from src.retrieval import RetrievalSystem
 
 def build_evaluator():
-    llm = ChatGroq(temperature=0, model_name="qwen/qwen3.8-27b")
+    llm = ChatGoogleGenerativeAI(temperature=0, model="gemini-3.5-flash-lite")
     structured_llm = llm.with_structured_output(EvaluatorScorecard)
     
     prompt = ChatPromptTemplate.from_messages([
