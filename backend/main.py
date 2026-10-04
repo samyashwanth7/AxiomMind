@@ -51,7 +51,7 @@ async def ingest_pdf(file: UploadFile = File(...)):
             shutil.copyfileobj(file.file, tmp)
             tmp_path = tmp.name
             
-        chunks = retrieval_system.ingest_pdf(tmp_path)
+        chunks = retrieval_system.ingest_pdf(tmp_path, source_name=file.filename)
         os.unlink(tmp_path)
         return {"message": f"Successfully ingested PDF: {file.filename}", "chunks": chunks}
     except Exception as e:

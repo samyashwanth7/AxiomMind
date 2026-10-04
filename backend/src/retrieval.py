@@ -9,7 +9,9 @@ load_dotenv()
 if os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
     os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
-from langchain_community.document_loaders import PyMuPDFLoader, WebBaseLoader
+import fitz  # PyMuPDF
+import requests
+from bs4 import BeautifulSoup
 from langchain_chroma import Chroma
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
@@ -49,23 +51,30 @@ class RetrievalSystem:
             self.vectorstore.add_documents(chunks)
         return len(chunks)
 
-    def ingest_pdf(self, file_path: str):
-        """Loads a PDF, chunks it, and adds to Chroma."""
-        loader = PyMuPDFLoader(file_path)
-        documents = loader.load()
-        filename = os.path.basename(file_path)
-        for doc in documents:
-            doc.metadata['source'] = filename
+    def ingest_pdf(self, file_path: str, source_name: str = None):
+        """Loads a PDF page-by-page with PyMuPDF, chunks it, and adds to Chroma."""
+        filename = source_name or os.path.basename(file_path)
+        documents = []
+        with fitz.open(file_path) as pdf:
+            for page_num, page in enumerate(pdf, start=1):
+                text = page.get_text()
+                if text.strip():
+                    documents.append(Document(
+                        page_content=text,
+                        metadata={"source": filename, "page": page_num}
+                    ))
         return self._add_to_chroma(documents)
 
     def ingest_url(self, url: str):
-        """Loads a webpage, chunks it, and adds to Chroma."""
-        loader = WebBaseLoader(url)
-        documents = loader.load()
-        for doc in documents:
-            doc.metadata['source'] = url
-            doc.metadata['page'] = 1
-        return self._add_to_chroma(documents)
+        """Fetches a webpage, strips boilerplate, chunks it, and adds to Chroma."""
+        resp = requests.get(url, timeout=20, headers={"User-Agent": "AxiomMind/1.0"})
+        resp.raise_for_status()
+        soup = BeautifulSoup(resp.text, "html.parser")
+        for tag in soup(["script", "style", "nav", "footer", "header", "noscript"]):
+            tag.decompose()
+        text = "\n".join(line.strip() for line in soup.get_text("\n").splitlines() if line.strip())
+        doc = Document(page_content=text, metadata={"source": url, "page": 1})
+        return self._add_to_chroma([doc])
         
     def ingest_text(self, text: str, source_name: str = "Pasted Note"):
         """Loads raw text, chunks it, and adds to Chroma."""
