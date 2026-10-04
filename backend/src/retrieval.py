@@ -1,27 +1,30 @@
 import os
 import uuid
 from typing import List, Dict, Any
+from dotenv import load_dotenv
+
+load_dotenv()
+
+# Ensure GOOGLE_API_KEY is populated if GEMINI_API_KEY is provided
+if os.environ.get("GEMINI_API_KEY") and not os.environ.get("GOOGLE_API_KEY"):
+    os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
+
 from langchain_community.document_loaders import PyMuPDFLoader, WebBaseLoader
 from langchain_chroma import Chroma
-from sentence_transformers import SentenceTransformer
+from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
-
-class LocalHuggingFaceEmbeddings:
-    def __init__(self, model_name: str = "all-MiniLM-L6-v2"):
-        self.model = SentenceTransformer(model_name)
-
-    def embed_documents(self, texts: List[str]) -> List[List[float]]:
-        return self.model.encode(texts, show_progress_bar=False).tolist()
-
-    def embed_query(self, text: str) -> List[float]:
-        return self.model.encode(text, show_progress_bar=False).tolist()
 
 class RetrievalSystem:
     def __init__(self, data_dir: str = "data", index_dir: str = "chroma_db"):
         self.data_dir = data_dir
         self.index_dir = index_dir
-        self.embeddings = LocalHuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
+        
+        api_key = os.environ.get("GOOGLE_API_KEY") or os.environ.get("GEMINI_API_KEY")
+        self.embeddings = GoogleGenerativeAIEmbeddings(
+            model="models/gemini-embedding-001",
+            api_key=api_key
+        )
         
         self.text_splitter = RecursiveCharacterTextSplitter(
             chunk_size=1000,
@@ -35,7 +38,7 @@ class RetrievalSystem:
         
         # Initialize Chroma
         self.vectorstore = Chroma(
-            collection_name="axiommind",
+            collection_name="axiommind_gemini",
             embedding_function=self.embeddings,
             persist_directory=self.index_dir
         )
