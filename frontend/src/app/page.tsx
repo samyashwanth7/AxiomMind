@@ -15,7 +15,8 @@ import {
   Settings,
   AlertCircle,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  Database
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -41,6 +42,7 @@ export default function Home() {
   const [showApiSettings, setShowApiSettings] = useState(false);
   const [backendStatus, setBackendStatus] = useState<"idle" | "checking" | "connected" | "disconnected">("idle");
   const [isProductionLocalhost, setIsProductionLocalhost] = useState(false);
+  const [chunkCount, setChunkCount] = useState<number | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -57,9 +59,21 @@ export default function Home() {
       }
     }
 
-    // Initial backend ping
+    // Initial backend ping and stats
     checkBackendHealth(activeUrl);
   }, []);
+
+  const fetchStats = async (urlToCheck: string) => {
+    try {
+      const res = await fetch(`${urlToCheck}/stats`);
+      if (res.ok) {
+        const data = await res.json();
+        setChunkCount(typeof data.total_chunks === "number" ? data.total_chunks : 0);
+      }
+    } catch {
+      // Ignore stats fetch failure
+    }
+  };
 
   const checkBackendHealth = async (urlToCheck: string) => {
     setBackendStatus("checking");
@@ -73,6 +87,7 @@ export default function Home() {
       clearTimeout(timeoutId);
       if (res.ok) {
         setBackendStatus("connected");
+        fetchStats(urlToCheck);
       } else {
         setBackendStatus("disconnected");
       }
@@ -113,7 +128,7 @@ export default function Home() {
   const handleIngestPDF = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!file) return;
-    setIngestStatus({ text: "Uploading & indexing PDF..." });
+    setIngestStatus({ text: "Uploading & indexing PDF (this may take a few seconds)..." });
     const formData = new FormData();
     formData.append("file", file);
     try {
@@ -128,6 +143,7 @@ export default function Home() {
       const data = await res.json();
       setIngestStatus({ text: data.message || "PDF ingested successfully" });
       setFile(null);
+      fetchStats(apiBase);
     } catch (err: any) {
       setIngestStatus({ text: `Ingest failed: ${err.message}`, isError: true });
     }
@@ -150,6 +166,7 @@ export default function Home() {
       const data = await res.json();
       setIngestStatus({ text: data.message || "URL ingested successfully" });
       setUrl("");
+      fetchStats(apiBase);
     } catch (err: any) {
       setIngestStatus({ text: `Ingest failed: ${err.message}`, isError: true });
     }
@@ -172,6 +189,7 @@ export default function Home() {
       const data = await res.json();
       setIngestStatus({ text: data.message || "Note ingested successfully" });
       setNote("");
+      fetchStats(apiBase);
     } catch (err: any) {
       setIngestStatus({ text: `Ingest failed: ${err.message}`, isError: true });
     }
@@ -180,6 +198,14 @@ export default function Home() {
   const handleSearch = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query) return;
+
+    if (file) {
+      const proceed = window.confirm(
+        `Notice: You selected "${file.name}" but haven't clicked "Ingest PDF" yet.\n\nAxiomMind cannot search this document until you ingest it.\n\nClick Cancel to ingest the PDF first, or OK to search existing documents.`
+      );
+      if (!proceed) return;
+    }
+
     setLoading(true);
     setResult(null);
     setSearchError(null);
@@ -246,6 +272,18 @@ export default function Home() {
             </button>
           </div>
 
+          {/* Knowledge Base Status Pill */}
+          <div className="flex items-center justify-between text-xs py-2 px-3 bg-gray-100 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+            <span className="text-gray-500 dark:text-gray-400 font-medium flex items-center gap-1.5">
+              <Database className="w-3.5 h-3.5 text-blue-500" /> Knowledge Base:
+            </span>
+            <span className={`font-mono font-semibold ${
+              chunkCount && chunkCount > 0 ? "text-green-600 dark:text-green-400" : "text-amber-600 dark:text-amber-400"
+            }`}>
+              {chunkCount !== null ? (chunkCount > 0 ? `${chunkCount} chunks` : "0 chunks (Empty)") : "Checking..."}
+            </span>
+          </div>
+
           <div className="space-y-6">
             <section>
               <h2 className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -258,12 +296,21 @@ export default function Home() {
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="block w-full text-xs text-gray-500 dark:text-gray-400 file:mr-2 file:py-1.5 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 dark:file:bg-blue-900/30 dark:file:text-blue-400 hover:file:bg-blue-100 dark:hover:file:bg-blue-900/50 border border-gray-200 dark:border-gray-600 rounded-md bg-transparent"
                 />
+                {file && (
+                  <p className="text-[11px] text-blue-600 dark:text-blue-400 font-medium animate-pulse">
+                    ⚠️ Selected: &quot;{file.name}&quot;. Click &quot;Ingest PDF&quot; below to process!
+                  </p>
+                )}
                 <button 
                   type="submit" 
                   disabled={!file}
-                  className="w-full bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 py-1.5 rounded-md hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-40 transition font-medium text-xs"
+                  className={`w-full py-1.5 rounded-md transition font-medium text-xs ${
+                    file 
+                      ? "bg-blue-600 text-white hover:bg-blue-700 ring-2 ring-blue-400 animate-pulse font-bold" 
+                      : "bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-600 disabled:opacity-40"
+                  }`}
                 >
-                  Ingest PDF
+                  {file ? "Ingest PDF Now" : "Ingest PDF"}
                 </button>
               </form>
             </section>
@@ -409,6 +456,16 @@ export default function Home() {
             </div>
           )}
 
+          {/* Empty Knowledge Base Hint */}
+          {chunkCount === 0 && (
+            <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 rounded-xl flex items-center gap-3 text-blue-800 dark:text-blue-300 text-xs">
+              <Database className="w-4 h-4 text-blue-500 flex-shrink-0" />
+              <span>
+                <strong>Knowledge Base is empty (0 chunks):</strong> Upload a PDF or paste notes on the left and click <strong>&quot;Ingest&quot;</strong> before researching so AxiomMind can extract facts.
+              </span>
+            </div>
+          )}
+
           {/* Search Form */}
           <form onSubmit={handleSearch} className="mb-6 flex-shrink-0">
             <div className="relative flex items-center">
@@ -419,7 +476,7 @@ export default function Home() {
                 type="text" 
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Ask a complex research question (e.g., 'Compare attention mechanisms in Transformers vs Mamba')..."
+                placeholder="Ask a complex research question (e.g., 'What are the main arguments and themes in this book?')..."
                 className="w-full pl-11 pr-32 py-4 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-700 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-base transition"
               />
               <button 

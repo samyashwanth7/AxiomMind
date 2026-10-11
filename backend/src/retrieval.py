@@ -45,10 +45,21 @@ class RetrievalSystem:
             persist_directory=self.index_dir
         )
 
+    def get_document_count(self) -> int:
+        """Returns the total number of indexed chunks in the Chroma vectorstore."""
+        try:
+            return self.vectorstore._collection.count()
+        except Exception:
+            return 0
+
     def _add_to_chroma(self, documents: List[Document]):
         chunks = self.text_splitter.split_documents(documents)
         if chunks:
-            self.vectorstore.add_documents(chunks)
+            # Batch additions in chunks of 50 to prevent payload timeout or API quota spikes
+            batch_size = 50
+            for i in range(0, len(chunks), batch_size):
+                batch = chunks[i:i + batch_size]
+                self.vectorstore.add_documents(batch)
         return len(chunks)
 
     def ingest_pdf(self, file_path: str, source_name: str = None):
@@ -63,6 +74,8 @@ class RetrievalSystem:
                         page_content=text,
                         metadata={"source": filename, "page": page_num}
                     ))
+        if not documents:
+            raise ValueError(f"No extractable text found in '{filename}'. If this is a scanned/image-only PDF, text extraction is not supported.")
         return self._add_to_chroma(documents)
 
     def ingest_url(self, url: str):

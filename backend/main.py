@@ -73,8 +73,20 @@ def ingest_text(request: IngestTextRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+@app.get("/stats")
+def get_stats():
+    count = retrieval_system.get_document_count()
+    return {"total_chunks": count}
+
 @app.post("/research")
 def run_research(request: QueryRequest):
+    chunk_count = retrieval_system.get_document_count()
+    if chunk_count == 0:
+        raise HTTPException(
+            status_code=400,
+            detail="The knowledge base is empty! Please upload a PDF, add a Webpage, or paste Notes and click 'Ingest' before researching."
+        )
+
     try:
         initial_state = {
             "query": request.query,
